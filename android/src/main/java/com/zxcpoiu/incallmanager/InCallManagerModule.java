@@ -41,6 +41,7 @@ import android.view.Display;
 import android.view.KeyEvent;
 import android.view.Window;
 import android.view.WindowManager;
+import androidx.annotation.RequiresApi;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
@@ -62,6 +63,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.List;
 
 import com.zxcpoiu.incallmanager.AppRTC.AppRTCBluetoothManager;
 
@@ -1596,6 +1598,12 @@ public class InCallManagerModule extends ReactContextBaseJavaModule implements L
                 break;
             case WIRED_HEADSET:
                 setSpeakerphoneOn(false);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    AudioDeviceInfo deviceInfo = getWiredDevice();
+                    if (deviceInfo != null) {
+                        audioManager.setCommunicationDevice(deviceInfo);
+                    }
+                }
                 break;
             case BLUETOOTH:
                 setSpeakerphoneOn(false);
@@ -1729,6 +1737,9 @@ public class InCallManagerModule extends ReactContextBaseJavaModule implements L
                 } else if (type == AudioDeviceInfo.TYPE_USB_DEVICE) {
                     Log.d(TAG, "hasWiredHeadset: found USB audio device");
                     return true;
+                } else if (type == AudioDeviceInfo.TYPE_USB_HEADSET) {
+                    Log.d(TAG, "hasWiredHeadset: found USB headset");
+                    return true;
                 } else if (type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
                     Log.d(TAG, "hasWiredHeadset: found wired headphones");
                     return true;
@@ -1741,6 +1752,23 @@ public class InCallManagerModule extends ReactContextBaseJavaModule implements L
     @ReactMethod
     public void getIsWiredHeadsetPluggedIn(Promise promise) {
         promise.resolve(this.hasWiredHeadset());
+    }
+
+    @Nullable
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private AudioDeviceInfo getWiredDevice() {
+        if (audioManager != null) {
+            List<AudioDeviceInfo> devices = audioManager.getAvailableCommunicationDevices();
+            for (AudioDeviceInfo device : devices) {
+                if (device.getType() == AudioDeviceInfo.TYPE_WIRED_HEADSET
+                        || device.getType() == AudioDeviceInfo.TYPE_USB_DEVICE
+                        || device.getType() == AudioDeviceInfo.TYPE_USB_HEADSET
+                        || device.getType() == AudioDeviceInfo.TYPE_WIRED_HEADPHONES) {
+                return device;
+                }
+            }
+        }
+        return null;
     }
 
     /**
